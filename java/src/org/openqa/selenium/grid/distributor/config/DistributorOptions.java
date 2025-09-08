@@ -40,7 +40,7 @@ public class DistributorOptions {
       "org.openqa.selenium.grid.distributor.selector.DefaultSlotSelector";
   static final boolean DEFAULT_REJECT_UNSUPPORTED_CAPS = false;
   static final int DEFAULT_NEWSESSION_THREADPOOL_SIZE =
-      Runtime.getRuntime().availableProcessors() * 3;
+      Runtime.getRuntime().availableProcessors() * 8; // Increased from 3 to 8
   private final Config config;
 
   public DistributorOptions(Config config) {

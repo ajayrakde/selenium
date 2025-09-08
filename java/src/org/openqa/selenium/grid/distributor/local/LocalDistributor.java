@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -146,6 +147,7 @@ public class LocalDistributor extends Distributor implements Closeable {
           });
 
   private final ExecutorService sessionCreatorExecutor;
+  private final ExecutorService sessionExecutionPool;
 
   private final NewSessionQueue sessionQueue;
 
@@ -201,14 +203,28 @@ public class LocalDistributor extends Distributor implements Closeable {
               return thread;
             });
 
+    // Dedicated pool for actual session execution with higher concurrency
+    sessionExecutionPool =
+        Executors.newFixedThreadPool(
+            newSessionThreadPoolSize * 2, // Double the threads for actual session work
+            r -> {
+              Thread thread = new Thread(r);
+              thread.setName("Local Distributor - Session Execution");
+              thread.setDaemon(true);
+              return thread;
+            });
+
     NewSessionRunnable newSessionRunnable = new NewSessionRunnable();
 
-    // if sessionRequestRetryInterval is 0, we will schedule session creation every 10 millis
+    // Reduce polling interval for faster queue processing under high load
+    // if sessionRequestRetryInterval is 0, we will schedule session creation every 5 millis
     long period =
-        sessionRequestRetryInterval.isZero() ? 10 : sessionRequestRetryInterval.toMillis();
+        sessionRequestRetryInterval.isZero()
+            ? 5
+            : Math.min(sessionRequestRetryInterval.toMillis(), 100);
     newSessionService.scheduleAtFixedRate(
         GuardedRunnable.guard(newSessionRunnable),
-        sessionRequestRetryInterval.toMillis(),
+        Math.min(sessionRequestRetryInterval.toMillis(), 50), // Faster initial startup
         period,
         TimeUnit.MILLISECONDS);
 
@@ -512,6 +528,7 @@ public class LocalDistributor extends Distributor implements Closeable {
     shutdownGracefully("Local Distributor - Node Health Check", nodeHealthCheckService);
     shutdownGracefully("Local Distributor - New Session Queue", newSessionService);
     shutdownGracefully("Local Distributor - Session Creation", sessionCreatorExecutor);
+    shutdownGracefully("Local Distributor - Session Execution", sessionExecutionPool);
   }
 
   private class NewSessionRunnable implements Runnable {
@@ -546,6 +563,13 @@ public class LocalDistributor extends Distributor implements Closeable {
 
         if (!stereotypes.isEmpty()) {
           List<SessionRequest> matchingRequests = sessionQueue.getNextAvailable(stereotypes);
+
+          // Process requests in parallel batches for better throughput
+          LOG.log(
+              getDebugLogLevel(),
+              "Processing {0} session requests in parallel",
+              matchingRequests.size());
+
           matchingRequests.forEach(
               req -> sessionCreatorExecutor.execute(() -> handleNewSessionRequest(req)));
         }
@@ -589,54 +613,75 @@ public class LocalDistributor extends Distributor implements Closeable {
         attributeMap.put(AttributeKey.REQUEST_ID.getKey(), reqId.toString());
 
         attributeMap.put("request", sessionRequest.toString());
-        Either<SessionNotCreatedException, CreateSessionResponse> response =
-            newSession(sessionRequest);
 
-        if (response.isLeft() && response.left() instanceof RetrySessionRequestException) {
-          try (Span childSpan = span.createSpan("distributor.retry")) {
-            if (LOG.isLoggable(getDebugLogLevel())) {
-              LOG.log(getDebugLogLevel(), "Retrying {0}", sessionRequest.getDesiredCapabilities());
-            }
-            boolean retried = sessionQueue.retryAddToQueue(sessionRequest);
+        // Delegate actual session creation to dedicated execution pool for maximum parallelism
+        CompletableFuture.supplyAsync(() -> newSession(sessionRequest), sessionExecutionPool)
+            .whenComplete(
+                (response, throwable) -> {
+                  if (throwable != null) {
+                    LOG.log(Level.WARNING, "Exception in async session creation", throwable);
+                    response =
+                        Either.left(
+                            new SessionNotCreatedException(
+                                "Session creation failed: " + throwable.getMessage(), throwable));
+                  }
 
-            attributeMap.put("request.retry_add", retried);
-            childSpan.addEvent("Retry adding to front of queue. No slot available.", attributeMap);
+                  handleSessionCreationResult(sessionRequest, response, span, attributeMap);
+                });
+      }
+    }
 
-            if (retried) {
-              return;
-            }
-            childSpan.addEvent("retrying_request", attributeMap);
+    private void handleSessionCreationResult(
+        SessionRequest sessionRequest,
+        Either<SessionNotCreatedException, CreateSessionResponse> response,
+        Span span,
+        AttributeMap attributeMap) {
+      RequestId reqId = sessionRequest.getRequestId();
+
+      if (response.isLeft() && response.left() instanceof RetrySessionRequestException) {
+        try (Span childSpan = span.createSpan("distributor.retry")) {
+          if (LOG.isLoggable(getDebugLogLevel())) {
+            LOG.log(getDebugLogLevel(), "Retrying {0}", sessionRequest.getDesiredCapabilities());
           }
-        }
+          boolean retried = sessionQueue.retryAddToQueue(sessionRequest);
 
-        boolean isSessionValid = sessionQueue.complete(reqId, response);
-        // terminate invalid sessions to avoid stale sessions
-        if (!isSessionValid && response.isRight()) {
-          LOG.log(
-              Level.INFO,
-              "Session for request {0} has been created but it has timed out or the connection"
-                  + " dropped, stopping it to avoid stalled browser",
-              reqId.toString());
-          Session session = response.right().getSession();
-          Node node = nodeRegistry.getNode(session.getUri());
-          if (node != null) {
-            boolean deleted;
-            try {
-              // Attempt to stop the session
-              deleted =
-                  node.execute(new HttpRequest(DELETE, "/session/" + session.getId())).getStatus()
-                      == 200;
-            } catch (Exception e) {
-              LOG.log(
-                  Level.WARNING,
-                  String.format("Exception while trying to delete session %s", session.getId()),
-                  e);
-              deleted = false;
-            }
-            if (!deleted) {
-              // Kill the session
-              node.stop(session.getId());
-            }
+          attributeMap.put("request.retry_add", retried);
+          childSpan.addEvent("Retry adding to front of queue. No slot available.", attributeMap);
+
+          if (retried) {
+            return;
+          }
+          childSpan.addEvent("retrying_request", attributeMap);
+        }
+      }
+
+      boolean isSessionValid = sessionQueue.complete(reqId, response);
+      // terminate invalid sessions to avoid stale sessions
+      if (!isSessionValid && response.isRight()) {
+        LOG.log(
+            Level.INFO,
+            "Session for request {0} has been created but it has timed out or the connection"
+                + " dropped, stopping it to avoid stalled browser",
+            reqId.toString());
+        Session session = response.right().getSession();
+        Node node = nodeRegistry.getNode(session.getUri());
+        if (node != null) {
+          boolean deleted;
+          try {
+            // Attempt to stop the session
+            deleted =
+                node.execute(new HttpRequest(DELETE, "/session/" + session.getId())).getStatus()
+                    == 200;
+          } catch (Exception e) {
+            LOG.log(
+                Level.WARNING,
+                String.format("Exception while trying to delete session %s", session.getId()),
+                e);
+            deleted = false;
+          }
+          if (!deleted) {
+            // Kill the session
+            node.stop(session.getId());
           }
         }
       }
