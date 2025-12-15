@@ -4,10 +4,10 @@
 - Package: `py/selenium/`
 - Remote/transport: `py/selenium/webdriver/remote/`
 
-## Building
+## Common commands
 - Build: `bazel build //py/...`
 
-## Package Management
+## Dependency management
 - Dev dependencies must be updated in `py/requirements.txt` and then run `scripts/update_py_dependencies.sh`
 - Package dependencies must be updated in `py/pyproject.toml` and `py/BUILD.bazel`
 
