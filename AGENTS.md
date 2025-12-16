@@ -7,6 +7,25 @@ Selenium is a Bazel-built monorepo implementing the W3C WebDriver (and related) 
 shipping multiple language bindings plus Grid and Selenium Manager.
 This repo’s README is for contributors; usage docs live elsewhere.
 
+## Execution model (important)
+In many AI-agent environments, Bazel cannot run (insufficient network/toolchain/browser access).
+Agents MUST:
+- Never claim commands/tests were executed unless the user provides output.
+- Provide copy/paste-ready commands for the user to run in an admin terminal.
+- Ask for the exact output needed (errors, failing targets, stack traces), then iterate.
+
+### When proposing verification:
+- Prefer the narrowest Bazel labels and smallest test set.
+- Provide commands in the order they should be run, one block at a time.
+
+### Terminal run requested
+Use this format:
+Goal: <specify the reason for executing the Bazel command>
+Run:
+bazel <command> '...'
+Paste back:
+the command output + any errors
+
 If the user is asking a question (no code changes), answer directly—do not propose plans/checklists.
 If the user requests a code change, follow the guidance below.
 
@@ -17,26 +36,26 @@ If the user requests a code change, follow the guidance below.
 - Avoid repo-wide refactors/formatting. Prefer small, reversible diffs.
 
 ## Bindings
-- Java code is in `java/`, see `java/AGENTS.md`
-- Python code is in `py/`, see `py/AGENTS.md`
-- Ruby code is in `rb/`, see `rb/AGENTS.md`
-- JavaScript code is in `javascript/selenium-webdriver/`, see `javascript/selenium-webdriver/AGENTS.md`
-- .NET code is in `dotnet/`, see `dotnet/AGENTS.md`
+- Java code is in `java/`, see `java/AGENTS.md` and `java/TESTING.md`
+- Python code is in `py/`, see `py/AGENTS.md` and `py/TESTING.md`
+- Ruby code is in `rb/`, see `rb/AGENTS.md` and `rb/TESTING.md`
+- JavaScript code is in `javascript/selenium-webdriver/`, see `javascript/selenium-webdriver/AGENTS.md` and `javascript/selenium-webdriver/TESTING.md`
+- .NET code is in `dotnet/`, see `dotnet/AGENTS.md` and `dotnet/TESTING.md`
 
 When changing behavior, compare to the equivalent areas in at least one other binding:
 - `rg <term> java/ py/ rb/ dotnet/`
 
 ## Description of other directories
-- `javascript/atoms/` Google closure code implemented in drivers (high risk)
-- `rust/` — Selenium Manager + Rust components, see `rust/AGENTS.md`
+- `javascript/atoms/` JS snippets compiled with Closure tooling is used in bindings and by external drivers (high risk)
+- `rust/` — Selenium Manager + Rust components, see `rust/AGENTS.md` and `rust/TESTING.md`
 - `common/` — shared code and build/test wiring
 - `common/src/` — HTML code used by tests (high risk to break tests)
 - `scripts/`, `rake_tasks/`, `.github/`, `Rakefile` — tooling and Bazel wrappers (high risk)
 
-## Toolchain + entrypoints
+## Toolchain
 - Expect Bazelisk + JDK 17+ (JAVA_HOME should point to a JDK)
 - CI and testing executed via GitHub Actions (`.github/`)
-- Use targeted bazel commands as necessary. not scripts or wrappers meant for CI tooling
+- Use targeted Bazel commands as necessary
 - Use `bazel query ...` to locate exact labels before building/testing.
 
 ### Testing
@@ -56,26 +75,6 @@ Unless specifically instructed, ask for verification before making changes to th
 - WebDriver/BiDi semantics, capability parsing, wire-level behavior
 - Dependency updates and `MODULE.bazel` changes
 - Grid routing/distributor/queue logic
-
-## Execution model (important)
-In many AI-agent environments, Bazel cannot run (insufficient network/toolchain/browser access).
-Agents MUST:
-- Never claim commands/tests were executed unless the user provides output.
-- Provide copy/paste-ready commands for the user to run in an admin terminal.
-- Ask for the exact output needed (errors, failing targets, stack traces), then iterate.
-
-### When proposing verification:
-- Prefer the narrowest Bazel labels and smallest test set.
-- Prefer `./go <task>` when it exists (it matches CI/release flows).
-- Provide commands in the order they should be run, one block at a time.
-
-### Terminal run requested
-Use this format:
-Goal: <specify the reason for executing the Bazel command>
-Run:
-bazel <command> '...'
-Paste back:
-the command output + any errors
 
 ## After making code changes
 - Report any high risk changes made
