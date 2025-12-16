@@ -5,79 +5,76 @@ Language-specific details live in respective subdirectories.
 
 Selenium is a Bazel-built monorepo implementing the W3C WebDriver (and related) protocols,
 shipping multiple language bindings plus Grid and Selenium Manager.
-This repo’s README is for contributors; usage docs live elsewhere.
+The repository README is aimed at contributors; end-user docs live elsewhere.
+
+If the user is asking a question (no code change requested), answer directly—no plans/checklists.
+If the user requests a patch, follow the guidance below.
 
 ## Execution model (important)
-In many AI-agent environments, Bazel cannot run (insufficient network/toolchain/browser access).
+In many AI-agent environments, Bazel cannot be executed (restricted network/toolchain/browser access).
 Agents MUST:
-- Never claim commands/tests were executed unless the user provides output.
+- Never claim commands/tests ran unless the user provides output.
 - Provide copy/paste-ready commands for the user to run in an admin terminal.
 - Ask for the exact output needed (errors, failing targets, stack traces), then iterate.
 
-### When proposing verification:
-- Prefer the narrowest Bazel labels and smallest test set.
-- Provide commands in the order they should be run, one block at a time.
-
-### Terminal run requested
-Use this format:
-Goal: <specify the reason for executing the Bazel command>
+Terminal run request format:
+Goal: <why this is being run>
 Run:
-bazel <command> '...'
-Paste back:
-the command output + any errors
+<command>
+Reply: "please paste output / errors"
 
-If the user is asking a question (no code changes), answer directly—do not propose plans/checklists.
-If the user requests a code change, follow the guidance below.
-
-## Invariants (do not violate these unless explicitly asked)
-- Treat `bazel-*` directories as generated build output.
+## Invariants (don’t violate unless explicitly asked)
+- Treat `bazel-*` as generated output.
 - Treat `third_party/` as read-only.
 - Preserve Apache 2.0 headers and NOTICE/LICENSE content.
-- Avoid repo-wide refactors/formatting. Prefer small, reversible diffs.
+- Avoid repo-wide refactors/formatting; prefer small, reversible diffs.
 
-## Bindings
-- Java code is in `java/`, see `java/AGENTS.md` and `java/TESTING.md`
-- Python code is in `py/`, see `py/AGENTS.md` and `py/TESTING.md`
-- Ruby code is in `rb/`, see `rb/AGENTS.md` and `rb/TESTING.md`
-- JavaScript code is in `javascript/selenium-webdriver/`, see `javascript/selenium-webdriver/AGENTS.md` and `javascript/selenium-webdriver/TESTING.md`
-- .NET code is in `dotnet/`, see `dotnet/AGENTS.md` and `dotnet/TESTING.md`
-
-When changing behavior, compare to the equivalent areas in at least one other binding:
-- `rg <term> java/ py/ rb/ dotnet/`
-
-## Description of other directories
-- `javascript/atoms/` JS snippets compiled with Closure tooling is used in bindings and by external drivers (high risk)
-- `rust/` — Selenium Manager + Rust components, see `rust/AGENTS.md` and `rust/TESTING.md`
-- `common/` — shared code and build/test wiring
-- `common/src/` — HTML code used by tests (high risk to break tests)
-- `scripts/`, `rake_tasks/`, `.github/`, `Rakefile` — tooling and Bazel wrappers (high risk)
+## Repo layout
+Bindings:
+- Java: `java/` (see `java/AGENTS.md`)
+- Python: `py/` (see `py/AGENTS.md`)
+- Ruby: `rb/` (see `rb/AGENTS.md`)
+- JavaScript: `javascript/selenium-webdriver/` (see `javascript/selenium-webdriver/AGENTS.md`)
+- .NET: `dotnet/` (see `dotnet/AGENTS.md`)
+Other components:
+- `rust/` (Selenium Manager, see `rust/AGENTS.md`)
+- `common/` (shared build/test wiring; changes can affect multiple areas)
+- `common/src/` (test HTML fixtures; changes can break tests)
+- `javascript/atoms/` (shared JS atoms; very high blast radius)
+- `scripts/`, `rake_tasks/`, `.github/`, `Rakefile` (tooling/build; high risk)
 
 ## Toolchain
 - Expect Bazelisk + JDK 17+ (JAVA_HOME should point to a JDK)
-- CI and testing executed via GitHub Actions (`.github/`)
-- Use targeted Bazel commands as necessary
-- Use `bazel query ...` to locate exact labels before building/testing.
+- Prefer `./go <task>` if applicable (Rake tasks execute bazel & scripts, used by CI)
+- Use targeted Bazel commands. Use `bazel query ...` to locate labels before build/test
 
-### Testing
-- Use binding's documented testing guidance (see `<dir>/AGENTS.md`)
-- Consider these flags when testing locally:
-  - `--pin_browsers` (browsers and drivers managed by Bazel)
-  - `--test_output all|streamed` (to debug output)
-  - `--cache_test_results=no` (ignore cached tests)
-  - `--test_env X=y` (if you need to pass in an environment variable for the test)
+## Cross-binding consistency checks
+When changing user-visible behavior, compare with at least one other binding:
+- `rg <term> java/ py/ rb/ dotnet/ javascript/selenium-webdriver/`
+
+If behavior is shared/low-level (protocol, serialization, “remote”/transport), expect follow-up parity work or file an issue explicitly.
+
+## Testing
+Use each binding’s testing guide (see `<dir>/TESTING.md`).
+Consider these flags when testing locally:
+- `--test_size_filters=small` (unit tests only)
+- `--test_output=all|streamed` (displays console output to debug)
+- `--cache_test_results=no` (force re-running all tests)
+- `--test_env FOO=bar` (if tests need environment variables)
 
 ## Dependencies & lockfiles
 - Don’t hand-edit lockfiles (`pnpm-lock.yaml`, `multitool.lock.json`, `Cargo.Bazel.lock`, etc).
 - Use the binding’s documented update/repin flow (see `<dir>/AGENTS.md`).
 
-## High risk changes
-Unless specifically instructed, ask for verification before making changes to these things or anything referenced above as high risk
+## High risk changes (request verification before modifying unless explicitly instructed)
+- Everything referenced above as high risk
 - WebDriver/BiDi semantics, capability parsing, wire-level behavior
-- Dependency updates and `MODULE.bazel` changes
+- Dependency updates / `MODULE.bazel` / repin flows
 - Grid routing/distributor/queue logic
 
 ## After making code changes
-- Report any high risk changes made
-- Report the exact Bazel commands run with results
-- Report any expected cross-binding impact and follow-up issues needed
-- Request to run linting command: `./scripts/format.sh` 
+- Call out any high risk areas touched
+- List exact commands the user ran (or needs to run) + outcomes
+- Note cross-binding impact and any follow-up issues needed
+- Recommend formatting/lint if applicable (e.g., `./scripts/format.sh`)
+- 
