@@ -6,7 +6,7 @@
 - Bazel will build and use the version of Ruby specified in `rb/.ruby-version`
 
 ## Common commands
-- `bazel build //rb/... bazel run //:bundle -- update`
+- `bazel build //rb/...`
 
 ## Dependency management
 - Dependencies must be updated in `rb/selenium-webdriver.gemspec`

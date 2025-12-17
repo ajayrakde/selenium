@@ -17,11 +17,9 @@ Agents MUST:
 - Provide copy/paste-ready commands for the user to run in an admin terminal.
 - Ask for the exact output needed (errors, failing targets, stack traces), then iterate.
 
-Terminal run request format:
+### Terminal run request format:
 Goal: <why this is being run>
-Run:
-<command>
-Reply: "please paste output / errors"
+Run: <command>
 
 ## Invariants (don’t violate unless explicitly asked)
 - Treat `bazel-*` as generated output.
