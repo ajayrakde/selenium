@@ -18,7 +18,6 @@
 """Abstract Syntax Tree (AST) data structures for CDDL definitions."""
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Union
 
 
 @dataclass
@@ -27,7 +26,7 @@ class CddlField:
     name: str
     type: "CddlType"
     optional: bool = False
-    description: Optional[str] = None
+    description: str | None = None
 
 
 @dataclass
@@ -35,10 +34,10 @@ class CddlType:
     """Base class for all CDDL type definitions."""
     name: str
     base_type: str = "unknown"  # Type category: ref, string, number, etc.
-    module: Optional[str] = None  # e.g., "session", "network"
-    description: Optional[str] = None
-    reference: Optional[str] = None  # For type references
-    value: Optional[str] = None  # For literal values
+    module: str | None = None  # e.g., "session", "network"
+    description: str | None = None
+    reference: str | None = None  # For type references
+    value: str | None = None  # For literal values
     is_primitive: bool = False  # Whether this is a primitive type
 
 
@@ -51,43 +50,43 @@ class CddlPrimitiveType(CddlType):
 @dataclass
 class CddlObject(CddlType):
     """Represents a CDDL object type with fields."""
-    fields: List[CddlField] = field(default_factory=list)
+    fields: list[CddlField] = field(default_factory=list)
     extensible: bool = False  # Whether object allows additional fields
 
 
 @dataclass
 class CddlEnum(CddlType):
     """Represents a CDDL enum type with string values."""
-    values: List[str] = field(default_factory=list)
+    values: list[str] = field(default_factory=list)
 
 
 @dataclass
 class CddlUnionVariant:
     """Represents one variant in a union type."""
     index: int = 0  # Index in union
-    type: Optional[CddlType] = None  # The type for this variant
-    discriminator_field: Optional[str] = None  # For tagged unions
-    discriminator_value: Optional[str] = None  # Value of discriminator field
+    type: CddlType | None = None  # The type for this variant
+    discriminator_field: str | None = None  # For tagged unions
+    discriminator_value: str | None = None  # Value of discriminator field
 
 
 @dataclass
 class CddlUnion(CddlType):
     """Represents a CDDL union type (multiple possible types)."""
-    variants: List[CddlUnionVariant] = field(default_factory=list)
+    variants: list[CddlUnionVariant] = field(default_factory=list)
 
 
 @dataclass
 class CddlArray(CddlType):
     """Represents a CDDL array type."""
-    item_type: Optional[CddlType] = None
+    item_type: CddlType | None = None
 
 
 @dataclass
 class CddlCommand(CddlType):
     """Represents a WebDriver BiDi command."""
     method: str = ""  # e.g., "session.new"
-    params: Optional[CddlObject] = None
-    result: Optional[CddlObject] = None
+    params: CddlObject | None = None
+    result: CddlObject | None = None
 
 
 @dataclass
@@ -95,11 +94,11 @@ class CddlModule:
     """Represents a module grouping (e.g., all session.* types)."""
     name: str  # e.g., "session", "network"
     types: dict = field(default_factory=dict)  # Dict[name, CddlType]
-    commands: List[CddlCommand] = field(default_factory=list)
+    commands: list[CddlCommand] = field(default_factory=list)
 
 
 @dataclass
 class CddlSpecification:
     """Root node representing entire CDDL specification."""
-    modules: List[CddlModule] = field(default_factory=list)
+    modules: list[CddlModule] = field(default_factory=list)
     types: dict = field(default_factory=dict)  # Dict[name, CddlType] - Global types

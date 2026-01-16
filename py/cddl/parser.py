@@ -19,8 +19,8 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Optional, Set, Dict, Any, Union as UnionType
-import re
+from typing import Any
+
 from . import ast
 
 
@@ -81,9 +81,9 @@ class CddlLexer:
         self.pos = 0
         self.line = 1
         self.column = 1
-        self.tokens: List[Token] = []
+        self.tokens: list[Token] = []
 
-    def tokenize(self) -> List[Token]:
+    def tokenize(self) -> list[Token]:
         """Tokenize the CDDL text.
 
         Returns:
@@ -288,7 +288,7 @@ class CddlLexer:
 class CddlParser:
     """Parser for CDDL specifications."""
 
-    def __init__(self, tokens: List[Token]):
+    def __init__(self, tokens: list[Token]):
         """Initialize parser with token stream.
 
         Args:
@@ -314,7 +314,7 @@ class CddlParser:
                     # Skip tokens if parse_definition returned None
                     # This prevents infinite loops
                     self._advance()
-            except SyntaxError as e:
+            except SyntaxError:
                 # Skip to next definition on error
                 # Look for next IDENTIFIER or EXTENSIBLE followed by ASSIGN
                 while not self._is_at_end():
@@ -353,7 +353,7 @@ class CddlParser:
         self._advance()
         return token
 
-    def _parse_definition(self) -> Optional[tuple]:
+    def _parse_definition(self) -> tuple | None:
         """Parse a CDDL type definition."""
         if self._is_at_end():
             return None
@@ -558,15 +558,15 @@ class CddlParser:
 class AstTransformer:
     """Transform parsed CDDL dict intermediate representation to AST objects."""
 
-    def __init__(self, definitions: Dict[str, Any]):
+    def __init__(self, definitions: dict[str, Any]):
         """Initialize transformer with parsed definitions.
 
         Args:
             definitions: Dictionary of parsed CDDL definitions from CddlParser
         """
         self.definitions = definitions
-        self.cddl_types: Dict[str, ast.CddlType] = {}
-        self.modules: Dict[str, ast.CddlModule] = {}
+        self.cddl_types: dict[str, ast.CddlType] = {}
+        self.modules: dict[str, ast.CddlModule] = {}
 
     def transform(self) -> ast.CddlSpecification:
         """Transform parsed definitions to CddlSpecification AST.
@@ -614,7 +614,7 @@ class AstTransformer:
                 name="_global", types=global_types, commands=[]
             )
 
-    def _transform_type(self, name: str, definition: Any) -> Optional[ast.CddlType]:
+    def _transform_type(self, name: str, definition: Any) -> ast.CddlType | None:
         """Transform a single type definition to AST.
 
         Args:
@@ -725,7 +725,7 @@ class AstTransformer:
             name=name, variants=variants, description=None
         )
 
-    def _flatten_union_variants(self, definition: dict) -> List[Any]:
+    def _flatten_union_variants(self, definition: dict) -> list[Any]:
         """Flatten nested union definitions into a list of variants.
 
         Args:

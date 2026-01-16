@@ -22,7 +22,6 @@ Handles writing generated Python code to files organized by module.
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional
 
 from . import ast
 from .generator import PythonCodeGenerator
@@ -44,7 +43,7 @@ class ModuleWriter:
         self.generator = PythonCodeGenerator(strict_mode=strict_mode)
         self.logger = logging.getLogger(__name__)
 
-    def write_specification(self, spec: ast.CddlSpecification) -> Dict[str, Path]:
+    def write_specification(self, spec: ast.CddlSpecification) -> dict[str, Path]:
         """Write all modules from a specification.
 
         Args:
@@ -67,7 +66,7 @@ class ModuleWriter:
 
         return written_files
 
-    def _write_module(self, module: ast.CddlModule) -> Optional[Path]:
+    def _write_module(self, module: ast.CddlModule) -> Path | None:
         """Write a single module to disk.
 
         Args:

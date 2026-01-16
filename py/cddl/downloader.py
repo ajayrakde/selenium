@@ -19,16 +19,15 @@
 
 import re
 from pathlib import Path
-from typing import Optional
-from urllib.request import urlopen
 from urllib.error import URLError
+from urllib.request import urlopen
 
 # W3C WebDriver BiDi specification URL with CDDL index
 W3C_WEBDRIVER_BIDI_URL = "https://www.w3.org/TR/webdriver-bidi/"
 
 
 def download_cddl_spec(
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
     force: bool = False,
 ) -> Path:
     """Download W3C WebDriver BiDi CDDL specification from HTML spec.
@@ -62,7 +61,7 @@ def download_cddl_spec(
     try:
         with urlopen(W3C_WEBDRIVER_BIDI_URL) as response:
             spec_html = response.read().decode("utf-8")
-        print(f"Downloaded specification")
+        print("Downloaded specification")
     except URLError as e:
         raise URLError(f"Failed to download W3C spec: {e}")
 
@@ -164,5 +163,5 @@ def read_cddl_file(file_path: Path) -> str:
     Returns:
         File content as string
     """
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         return f.read()

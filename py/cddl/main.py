@@ -20,7 +20,6 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional
 
 from . import downloader, parser, writer
 
@@ -185,12 +184,12 @@ def cmd_parse(args) -> int:
     # Parse CDDL
     logging.info(f"Parsing {cddl_file}...")
     try:
-        with open(cddl_file, "r") as f:
+        with open(cddl_file) as f:
             cddl_text = f.read()
         
         spec = parser.parse_cddl(cddl_text)
         
-        logging.info(f"Successfully parsed CDDL")
+        logging.info("Successfully parsed CDDL")
         logging.info(f"  Modules: {len(spec.modules)}")
         logging.info(f"  Types: {len(spec.types)}")
         
@@ -199,7 +198,7 @@ def cmd_parse(args) -> int:
             logging.info(f"    Module '{module.name}': {len(module.types)} types")
         
         if args.output:
-            logging.info(f"Output to JSON not yet implemented")
+            logging.info("Output to JSON not yet implemented")
         
         return 0
     except SyntaxError as e:
@@ -235,14 +234,14 @@ def cmd_generate(args) -> int:
     # Parse CDDL
     logging.info(f"Parsing {cddl_file}...")
     try:
-        with open(cddl_file, "r") as f:
+        with open(cddl_file) as f:
             cddl_text = f.read()
         
         spec = parser.parse_cddl(cddl_text)
         logging.info(f"Successfully parsed CDDL ({len(spec.types)} types)")
         
         # Generate code
-        logging.info(f"Generating Python code...")
+        logging.info("Generating Python code...")
         module_writer = writer.ModuleWriter(args.output_dir, strict_mode=args.strict)
         written_files = module_writer.write_specification(spec)
         
@@ -284,7 +283,7 @@ def cmd_generate_all(args) -> int:
         # Parse first CDDL file
         cddl_file = cddl_files[0]
         logging.info(f"Parsing {cddl_file}...")
-        with open(cddl_file, "r") as f:
+        with open(cddl_file) as f:
             cddl_text = f.read()
         
         spec = parser.parse_cddl(cddl_text)

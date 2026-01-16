@@ -17,7 +17,7 @@
 
 """Type guard functions for runtime validation during deserialization."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def is_string(value: Any) -> bool:
@@ -51,10 +51,10 @@ def is_none(value: Any) -> bool:
 
 
 def validate_required_field(
-    json_dict: Dict[str, Any],
+    json_dict: dict[str, Any],
     field_name: str,
     expected_type: type,
-    camel_case: Optional[str] = None,
+    camel_case: str | None = None,
 ) -> Any:
     """Validate and extract a required field from JSON.
 
@@ -86,11 +86,11 @@ def validate_required_field(
 
 
 def validate_optional_field(
-    json_dict: Dict[str, Any],
+    json_dict: dict[str, Any],
     field_name: str,
     expected_type: type,
     default: Any = None,
-    camel_case: Optional[str] = None,
+    camel_case: str | None = None,
 ) -> Any:
     """Validate and extract an optional field from JSON.
 
@@ -123,11 +123,11 @@ def validate_optional_field(
 
 
 def validate_object(
-    json_dict: Dict[str, Any],
-    required_fields: Dict[str, type],
-    optional_fields: Optional[Dict[str, type]] = None,
+    json_dict: dict[str, Any],
+    required_fields: dict[str, type],
+    optional_fields: dict[str, type] | None = None,
     lenient: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Validate object fields with lenient or strict mode.
 
     Args:

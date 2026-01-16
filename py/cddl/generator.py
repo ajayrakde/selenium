@@ -20,10 +20,7 @@
 Generates Python dataclasses, Enums, and Union types from CDDL AST.
 """
 
-from typing import Dict, List, Optional, Tuple, Set
-from pathlib import Path
-from . import ast
-from . import type_guards
+from . import ast, type_guards
 
 
 class PythonCodeGenerator:
@@ -65,8 +62,8 @@ import json
             strict_mode: If True, validate all fields strictly
         """
         self.strict_mode = strict_mode
-        self.type_imports: Set[str] = set()
-        self.generated_code: Dict[str, str] = {}
+        self.type_imports: set[str] = set()
+        self.generated_code: dict[str, str] = {}
 
     def generate_module(self, module: ast.CddlModule) -> str:
         """Generate Python code for an entire module.
@@ -92,7 +89,7 @@ import json
         
         return "\n".join(lines)
 
-    def _generate_type(self, cddl_type: ast.CddlType, module_name: str = "") -> Optional[str]:
+    def _generate_type(self, cddl_type: ast.CddlType, module_name: str = "") -> str | None:
         """Generate Python code for a single type.
         
         Args:
@@ -138,7 +135,7 @@ import json
             if obj_type.description:
                 lines.append(f'    """{obj_type.description}"""')
             else:
-                lines.append(f'    """Auto-generated from WebDriver BiDi CDDL."""')
+                lines.append('    """Auto-generated from WebDriver BiDi CDDL."""')
         
         # Generate fields
         if obj_type.fields:
@@ -170,7 +167,7 @@ import json
         lines.append("")
         lines.append("    @classmethod")
         lines.append("    def from_json(cls, data: Dict[str, Any]) -> '{class_name}':")
-        lines.append(f"        \"\"\"Create from JSON dict with lenient parsing.\"\"\"")
+        lines.append("        \"\"\"Create from JSON dict with lenient parsing.\"\"\"")
         lines.append("        kwargs = {}")
         for field in obj_type.fields:
             python_name = type_guards._snake_to_camel(field.name)
@@ -192,7 +189,7 @@ import json
         """
         class_name = self._sanitize_name(enum_type.name)
         lines = [f"class {class_name}(str, Enum):"]
-        lines.append(f'    """Auto-generated enum from WebDriver BiDi CDDL."""')
+        lines.append('    """Auto-generated enum from WebDriver BiDi CDDL."""')
         
         if enum_type.values:
             for i, value in enumerate(enum_type.values):
