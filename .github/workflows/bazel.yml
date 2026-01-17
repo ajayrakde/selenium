@@ -115,6 +115,12 @@ jobs:
       - name: Set Ruby version
         if: inputs.ruby-version != ''
         run: echo '${{ inputs.ruby-version }}' > rb/.ruby-version
+      # Workaround for rules_ruby not handling rv-ruby and jruby/truffleruby properly
+      - name: Disable prebuilt Ruby
+        if: startsWith(inputs.ruby-version, 'jruby') || startsWith(inputs.ruby-version, 'truffleruby')
+        run: |
+          sed -i '/^[[:space:]]*excluded_gems/d' MODULE.bazel
+          sed -i '/^[[:space:]]*rv_version/d' MODULE.bazel
       - name: Setup DotNet
         if: inputs.dotnet-version != ''
         uses: actions/setup-dotnet@v4
