@@ -707,6 +707,14 @@ namespace :py do
     @git.add(conf)
   end
 
+  desc 'Update Python dependencies'
+  task :update do
+    Bazel.execute('run', [], '//scripts:update_py_deps')
+    Bazel.execute('run', [], '//py:requirements.update')
+    @git.add('py/requirements.txt')
+    @git.add('py/requirements_lock.txt')
+  end
+
   namespace :test do
     desc 'Python unit tests'
     task :unit do
