@@ -18,6 +18,10 @@ SMALL_TESTS = [
     "ProxyTest.java",
     "RequireTest.java",
     "WebDriverExceptionTest.java",
+    "locator/stability/JsResultParserTest.java",
+    "locator/stability/StabilityArchitectureTest.java",
+    "locator/stability/selenium/impl/DefaultStabilityEvaluatorTest.java",
+    "locator/stability/selenium/impl/DefaultStabilityServiceTest.java",
     "print/PrintOptionsTest.java",
     "print/PageMarginTest.java",
     "print/PageSizeTest.java",
@@ -28,6 +32,7 @@ java_test_suite(
     size = "small",
     srcs = SMALL_TESTS,
     deps = [
+        "//java/src/org/openqa/selenium:core",
         "//java/src/org/openqa/selenium/json",
         "//java/src/org/openqa/selenium/remote",
         "//java/test/org/openqa/selenium/netty/server:test-server",

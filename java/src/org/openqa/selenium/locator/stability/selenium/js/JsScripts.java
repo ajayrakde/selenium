@@ -1,0 +1,61 @@
+package org.openqa.selenium.locator.stability.selenium.js;
+
+public final class JsScripts {
+  public static final String ELEMENT_SAMPLE =
+      "return (function(el, captureAnimations) {"
+          + "  const result = {"
+          + "    ts: Date.now(),"
+          + "    attached: false,"
+          + "    displayed: false,"
+          + "    hasBox: false,"
+          + "    rect: { x: 0, y: 0, w: 0, h: 0 },"
+          + "    animSupported: false,"
+          + "    animRunning: null"
+          + "  };"
+          + "  try {"
+          + "    if (!el || !el.isConnected) {"
+          + "      return result;"
+          + "    }"
+          + "    result.attached = true;"
+          + "    const style = window.getComputedStyle(el);"
+          + "    const rect = el.getBoundingClientRect();"
+          + "    result.rect.x = rect.x;"
+          + "    result.rect.y = rect.y;"
+          + "    result.rect.w = rect.width;"
+          + "    result.rect.h = rect.height;"
+          + "    result.hasBox = rect.width > 0 && rect.height > 0;"
+          + "    result.displayed ="
+          + "      style.display !== 'none' &&"
+          + "      style.visibility !== 'hidden' &&"
+          + "      parseFloat(style.opacity || '1') > 0.01 &&"
+          + "      result.hasBox;"
+          + "    if (captureAnimations && typeof document.getAnimations === 'function') {"
+          + "      result.animSupported = true;"
+          + "      const animations = document.getAnimations({ subtree: false });"
+          + "      result.animRunning = animations.some(a => a.playState === 'running');"
+          + "    }"
+          + "  } catch (e) {"
+          + "  }"
+          + "  return result;"
+          + "})(arguments[0], arguments[1]);";
+
+  public static final String GLOBAL_SAMPLE =
+      "return (function() {"
+          + "  const result = {"
+          + "    ts: Date.now(),"
+          + "    animSupported: false,"
+          + "    animRunning: null"
+          + "  };"
+          + "  try {"
+          + "    if (typeof document.getAnimations === 'function') {"
+          + "      result.animSupported = true;"
+          + "      const animations = document.getAnimations({ subtree: true });"
+          + "      result.animRunning = animations.some(a => a.playState === 'running');"
+          + "    }"
+          + "  } catch (e) {"
+          + "  }"
+          + "  return result;"
+          + "})();";
+
+  private JsScripts() {}
+}
