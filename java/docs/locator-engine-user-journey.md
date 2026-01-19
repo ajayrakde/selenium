@@ -40,3 +40,4 @@ rememberMe.check();
 - Action pipeline behavior is opt-in via locator actions and does not affect raw WebDriver calls.
 - User journey remains valid as long as locators remain factory-created and strictness defaults are preserved.
 - Stability signal sampling is non-blocking and only enriches diagnostics when used, so the existing journey does not change.
+- Sync kernel readiness waits are opt-in and only apply when frameworks route actions through the SyncKernel helpers.
