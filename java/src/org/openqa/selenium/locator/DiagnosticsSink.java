@@ -5,4 +5,8 @@ package org.openqa.selenium.locator;
  */
 public interface DiagnosticsSink {
   void record(ResolutionDiagnostics diagnostics);
+
+  default void record(org.openqa.selenium.locator.bidi.model.BidiDiagnostics diagnostics) {
+    // Intentionally empty.
+  }
 }
