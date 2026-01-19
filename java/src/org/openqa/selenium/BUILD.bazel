@@ -15,6 +15,7 @@ java_export(
         "federatedcredentialmanagement/*.java",
         "internal/*.java",
         "interactions/**/*.java",
+        "locator/*.java",
         "logging/**/*.java",
         "net/*.java",
         "virtualauthenticator/*.java",

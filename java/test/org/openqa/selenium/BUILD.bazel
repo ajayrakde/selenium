@@ -10,6 +10,7 @@ SMALL_TESTS = [
     "CapabilitiesTest.java",
     "DownloadedFileTest.java",
     "KeysTest.java",
+    "LocatorEngineTest.java",
     "OutputTypeTest.java",
     "PersistentCapabilitiesTest.java",
     "PlatformTest.java",
