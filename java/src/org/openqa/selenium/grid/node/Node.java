@@ -179,6 +179,9 @@ public abstract class Node implements HasReadyState, Routable {
             delete("/session/{sessionId}/se/files")
                 .to(params -> new DownloadFile(this, sessionIdFrom(params)))
                 .with(spanDecorator("node.download_file")),
+            post("/session/{sessionId}/se/event")
+                .to(params -> new FireSessionEvent(this, sessionIdFrom(params)))
+                .with(spanDecorator("node.fire_session_event")),
             get("/se/grid/node/owner/{sessionId}")
                 .to(params -> new IsSessionOwner(this, sessionIdFrom(params)))
                 .with(spanDecorator("node.is_session_owner").andThen(requiresSecret)),
@@ -255,6 +258,16 @@ public abstract class Node implements HasReadyState, Routable {
   public abstract HttpResponse uploadFile(HttpRequest req, SessionId id);
 
   public abstract HttpResponse downloadFile(HttpRequest req, SessionId id);
+
+  /**
+   * Fires a user-defined session event that sidecar services can consume. This allows clients to
+   * trigger custom actions such as log collection, screenshot capture, or test status updates.
+   *
+   * @param req the HTTP request containing the event data
+   * @param id the session ID
+   * @return the HTTP response
+   */
+  public abstract HttpResponse fireSessionEvent(HttpRequest req, SessionId id);
 
   public abstract void stop(SessionId id) throws NoSuchSessionException;
 

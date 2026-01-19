@@ -341,6 +341,12 @@ public class OneShotNode extends Node {
   }
 
   @Override
+  public HttpResponse fireSessionEvent(HttpRequest req, SessionId id) {
+    // OneShotNode does not support custom session events
+    return new HttpResponse().setStatus(501);
+  }
+
+  @Override
   public void stop(SessionId id) throws NoSuchSessionException {
     LOG.info("Stop has been called: " + id);
     Require.nonNull("Session ID", id);

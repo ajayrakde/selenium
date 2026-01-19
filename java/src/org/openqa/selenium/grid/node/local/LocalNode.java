@@ -64,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -95,7 +96,13 @@ import org.openqa.selenium.grid.data.NodeHeartBeatEvent;
 import org.openqa.selenium.grid.data.NodeId;
 import org.openqa.selenium.grid.data.NodeStatus;
 import org.openqa.selenium.grid.data.Session;
+import org.openqa.selenium.grid.data.SessionClosedData;
+import org.openqa.selenium.grid.data.SessionClosedEvent;
 import org.openqa.selenium.grid.data.SessionClosedReason;
+import org.openqa.selenium.grid.data.SessionCreatedData;
+import org.openqa.selenium.grid.data.SessionCreatedEvent;
+import org.openqa.selenium.grid.data.SessionEvent;
+import org.openqa.selenium.grid.data.SessionEventData;
 import org.openqa.selenium.grid.data.Slot;
 import org.openqa.selenium.grid.data.SlotId;
 import org.openqa.selenium.grid.jmx.JMXHelper;
@@ -105,6 +112,7 @@ import org.openqa.selenium.grid.node.ActiveSession;
 import org.openqa.selenium.grid.node.HealthCheck;
 import org.openqa.selenium.grid.node.Node;
 import org.openqa.selenium.grid.node.SessionFactory;
+import org.openqa.selenium.grid.node.SessionLifecycleListener;
 import org.openqa.selenium.grid.node.config.NodeOptions;
 import org.openqa.selenium.grid.node.docker.DockerSession;
 import org.openqa.selenium.grid.security.Secret;
@@ -162,6 +170,7 @@ public class LocalNode extends Node implements Closeable {
   private final int nodeDownFailureThreshold;
   private final Runnable shutdown;
   private final ReadWriteLock drainLock = new ReentrantReadWriteLock();
+  private final List<SessionLifecycleListener> lifecycleListeners;
 
   protected LocalNode(
       Tracer tracer,
@@ -325,6 +334,24 @@ public class LocalNode extends Node implements Closeable {
                   stopAllSessions();
                   drain();
                 }));
+
+    // Load session lifecycle listeners via ServiceLoader for sidecar integration
+    List<SessionLifecycleListener> listeners = new ArrayList<>();
+    ServiceLoader.load(SessionLifecycleListener.class).forEach(listeners::add);
+    this.lifecycleListeners = List.copyOf(listeners);
+    if (!lifecycleListeners.isEmpty()) {
+      LOG.info(
+          String.format(
+              "Loaded %d session lifecycle listener(s): %s",
+              lifecycleListeners.size(),
+              lifecycleListeners.stream()
+                  .map(l -> l.getClass().getName())
+                  .collect(Collectors.joining(", "))));
+
+      // Register listener for session closed events to notify lifecycle listeners
+      bus.addListener(SessionClosedEvent.listener(this::notifySessionClosed));
+    }
+
     new JMXHelper().register(this);
   }
 
@@ -368,8 +395,8 @@ public class LocalNode extends Node implements Closeable {
                 String.format("Exception while trying to stop session %s", id), attributeMap);
           }
         }
-        // Attempt to stop the session with the appropriate reason
-        slot.stop(closeReason);
+        // Attempt to stop the session with the appropriate reason and node context
+        slot.stop(closeReason, getId(), externalUri);
         // Decrement the reserved/active session counter
         reservedOrActiveSessionCount.decrementAndGet();
         // Decrement pending sessions if Node is draining
@@ -634,6 +661,23 @@ public class LocalNode extends Node implements Closeable {
             String.format(
                 "%s. Id: %s, Caps: %s",
                 sessionCreatedMessage, sessionId, externalSession.getCapabilities()));
+
+        // Create session data for events and listeners
+        SessionCreatedData createdData =
+            new SessionCreatedData(
+                sessionId,
+                getId(),
+                externalUri,
+                session.getUri(),
+                externalSession.getCapabilities(),
+                slotToUse.getStereotype(),
+                externalSession.getStartTime());
+
+        // Fire session created event for sidecar services
+        bus.fire(new SessionCreatedEvent(createdData));
+
+        // Notify SPI-based lifecycle listeners
+        notifySessionCreated(createdData);
 
         return Either.right(
             new CreateSessionResponse(
@@ -1038,6 +1082,54 @@ public class LocalNode extends Node implements Closeable {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
+  public HttpResponse fireSessionEvent(HttpRequest req, SessionId id) {
+    Require.nonNull("Session ID", id);
+
+    // Verify session exists
+    SessionSlot slot = currentSessions.getIfPresent(id);
+    if (slot == null) {
+      throw new NoSuchSessionException("Cannot find session with id: " + id);
+    }
+
+    // Parse the event data from request
+    Map<String, Object> incoming = JSON.toType(string(req), Json.MAP_TYPE);
+    String eventType = (String) incoming.get("eventType");
+    if (eventType == null || eventType.isEmpty()) {
+      throw new WebDriverException(
+          "Event type is required. Please provide 'eventType' in payload.");
+    }
+
+    Map<String, Object> payload = (Map<String, Object>) incoming.get("payload");
+
+    // Create event data with node context
+    SessionEventData eventData =
+        SessionEventData.create(id, eventType, payload).withNodeContext(getId(), externalUri);
+
+    // Fire event via EventBus for sidecar services
+    bus.fire(new SessionEvent(eventData));
+
+    // Notify SPI-based lifecycle listeners
+    notifySessionEvent(eventData);
+
+    LOG.log(
+        Level.FINE,
+        () -> String.format("Session event fired: type=%s, sessionId=%s", eventType, id));
+
+    // Return success response
+    Map<String, Object> responseData =
+        Map.of(
+            "success",
+            true,
+            "eventType",
+            eventType,
+            "timestamp",
+            eventData.getTimestamp().toString());
+    Map<String, Object> result = Map.of("value", responseData);
+    return new HttpResponse().setContent(asJson(result));
+  }
+
+  @Override
   public void stop(SessionId id) throws NoSuchSessionException {
     Require.nonNull("Session ID", id);
 
@@ -1282,6 +1374,63 @@ public class LocalNode extends Node implements Closeable {
           Debug.getDebugLogLevel(),
           "Session creation failed, restored count. {0} remaining sessions before draining Node",
           remainingSessions);
+    }
+  }
+
+  /**
+   * Notifies all registered session lifecycle listeners that a session was created. Exceptions from
+   * listeners are caught and logged to prevent affecting the session lifecycle.
+   */
+  private void notifySessionCreated(SessionCreatedData data) {
+    for (SessionLifecycleListener listener : lifecycleListeners) {
+      try {
+        listener.onSessionCreated(data);
+      } catch (Exception e) {
+        LOG.log(
+            Level.WARNING,
+            String.format(
+                "Session lifecycle listener %s threw exception on session created",
+                listener.getClass().getName()),
+            e);
+      }
+    }
+  }
+
+  /**
+   * Notifies all registered session lifecycle listeners that a session was closed. Exceptions from
+   * listeners are caught and logged to prevent affecting the session lifecycle.
+   */
+  private void notifySessionClosed(SessionClosedData data) {
+    for (SessionLifecycleListener listener : lifecycleListeners) {
+      try {
+        listener.onSessionClosed(data);
+      } catch (Exception e) {
+        LOG.log(
+            Level.WARNING,
+            String.format(
+                "Session lifecycle listener %s threw exception on session closed",
+                listener.getClass().getName()),
+            e);
+      }
+    }
+  }
+
+  /**
+   * Notifies all registered session lifecycle listeners of a user-defined session event. Exceptions
+   * from listeners are caught and logged to prevent affecting event processing.
+   */
+  private void notifySessionEvent(SessionEventData data) {
+    for (SessionLifecycleListener listener : lifecycleListeners) {
+      try {
+        listener.onSessionEvent(data);
+      } catch (Exception e) {
+        LOG.log(
+            Level.WARNING,
+            String.format(
+                "Session lifecycle listener %s threw exception on session event '%s'",
+                listener.getClass().getName(), data.getEventType()),
+            e);
+      }
     }
   }
 
