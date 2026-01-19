@@ -27,6 +27,10 @@ This document defines the Priority #1 Locator Engine surface for Selenium Java. 
 
 Selector tiers are modeled in `SelectorTier`, with a policy defined by `TierPolicy`. Tiered usage is a required part of diagnostics and telemetry.
 
+## Diagnostics & Metrics
+
+Resolver diagnostics include outcome metadata (success, notfound, ambiguous) and a locator id tag for correlation.
+
 ## Next Steps
 
 - Implement `LocatorFactory` and `LocatorResolver` with Selenium integration.

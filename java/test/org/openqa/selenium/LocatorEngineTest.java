@@ -38,6 +38,7 @@ import org.openqa.selenium.locator.LocatorNotFoundException;
 import org.openqa.selenium.locator.LocatorFactory;
 import org.openqa.selenium.locator.LocatorPlan;
 import org.openqa.selenium.locator.LocatorPolicyViolationException;
+import org.openqa.selenium.locator.LocatorScopeException;
 import org.openqa.selenium.locator.Policy;
 import org.openqa.selenium.locator.ResolutionResult;
 import org.openqa.selenium.locator.ResolveOptions;
@@ -103,6 +104,18 @@ class LocatorEngineTest {
     Locator scoped = context.locator().byCss(".child").within(modal);
 
     assertThat(scoped.all().count(Duration.ZERO)).isEqualTo(2);
+  }
+
+  @Test
+  void withinMissingContainerThrowsScopeException() {
+    FakeDriver driver = new FakeDriver(List.of());
+    AutomationContext context = createContext(driver, TierPolicy.STANDARD);
+
+    Locator modal = context.locator().byTestId("modal");
+    Locator scoped = context.locator().byCss(".child").within(modal);
+
+    assertThatThrownBy(() -> scoped.all().count(Duration.ZERO))
+        .isInstanceOf(LocatorScopeException.class);
   }
 
   @Test

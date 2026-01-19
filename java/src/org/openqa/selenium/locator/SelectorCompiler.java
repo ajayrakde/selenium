@@ -47,6 +47,6 @@ final class SelectorCompiler {
         0,
         List.of(),
         List.of(),
-        java.util.Map.of());
+        java.util.Map.of("outcome", "invalid-selector"));
   }
 }

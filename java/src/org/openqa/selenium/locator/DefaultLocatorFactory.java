@@ -3,6 +3,7 @@ package org.openqa.selenium.locator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Default factory for creating locator plans.
@@ -25,7 +26,7 @@ public class DefaultLocatorFactory implements LocatorFactory {
         List.of(),
         Strictness.ONE,
         SelectorTier.TIER0_TESTID,
-        Map.of());
+        Map.of("locatorId", UUID.randomUUID().toString()));
     return new DefaultLocator(context, resolver, plan, null);
   }
 
@@ -38,7 +39,7 @@ public class DefaultLocatorFactory implements LocatorFactory {
         List.of(),
         Strictness.ONE,
         SelectorTier.TIER3_CSS,
-        Map.of());
+        Map.of("locatorId", UUID.randomUUID().toString()));
     return new DefaultLocator(context, resolver, plan, null);
   }
 
@@ -56,7 +57,7 @@ public class DefaultLocatorFactory implements LocatorFactory {
           0,
           List.of(),
           List.of("XPath selectors are not allowed under STRICT policy."),
-          Map.of());
+          Map.of("locatorId", UUID.randomUUID().toString()));
       throw new LocatorPolicyViolationException("XPath selectors are blocked by policy.", diagnostics);
     }
     LocatorPlan plan = new LocatorPlan(
@@ -66,7 +67,7 @@ public class DefaultLocatorFactory implements LocatorFactory {
         List.of(),
         Strictness.ONE,
         SelectorTier.TIER4_XPATH,
-        Map.of());
+        Map.of("locatorId", UUID.randomUUID().toString()));
     return new DefaultLocator(context, resolver, plan, null);
   }
 
@@ -79,7 +80,7 @@ public class DefaultLocatorFactory implements LocatorFactory {
         List.of(),
         Strictness.ONE,
         SelectorTier.TIER3_CSS,
-        Map.of());
+        Map.of("locatorId", UUID.randomUUID().toString()));
     return new DefaultLocator(context, resolver, plan, null);
   }
 }

@@ -38,7 +38,7 @@ public class DefaultLocatorResolver implements LocatorResolver {
       By by = compiler.compile(plan, context.policy());
       matches = filterEngine.apply(scope.findElements(by), plan.filters(), context.policy());
 
-      diagnostics = buildDiagnostics(context, plan, start, polls, matches, List.of());
+      diagnostics = buildDiagnostics(context, plan, start, polls, matches, "success", List.of());
 
       if (strictness == Strictness.ONE && matches.size() == 1) {
         break;
@@ -47,7 +47,7 @@ public class DefaultLocatorResolver implements LocatorResolver {
       if (strictness == Strictness.ONE && matches.size() > 1) {
         diagnostics = withCandidatePreviews(
             context,
-            buildDiagnostics(context, plan, start, polls, matches, suggestionsForAmbiguous(plan)),
+            buildDiagnostics(context, plan, start, polls, matches, "ambiguous", suggestionsForAmbiguous(plan)),
             matches,
             options,
             plan);
@@ -62,11 +62,11 @@ public class DefaultLocatorResolver implements LocatorResolver {
       }
     } while (true);
 
-    diagnostics = buildDiagnostics(context, plan, start, polls, matches, List.of());
+    diagnostics = buildDiagnostics(context, plan, start, polls, matches, "success", List.of());
     if (strictness == Strictness.ONE && matches.isEmpty()) {
       diagnostics = withCandidatePreviews(
           context,
-          buildDiagnostics(context, plan, start, polls, matches, suggestionsForNotFound(plan)),
+          buildDiagnostics(context, plan, start, polls, matches, "notfound", suggestionsForNotFound(plan)),
           matches,
           options,
           plan);
@@ -89,8 +89,12 @@ public class DefaultLocatorResolver implements LocatorResolver {
 
     WithinScope within = (WithinScope) plan.scope();
     LocatorPlan containerPlan = within.container().withStrictness(Strictness.ONE);
-    ResolutionResult result = resolve(context, containerPlan, options);
-    return result.singleOrThrow();
+    try {
+      ResolutionResult result = resolve(context, containerPlan, options);
+      return result.singleOrThrow();
+    } catch (LocatorException exception) {
+      throw new LocatorScopeException("Failed to resolve scope container.", exception, exception.diagnostics());
+    }
   }
 
   private ResolutionDiagnostics buildDiagnostics(
@@ -99,6 +103,7 @@ public class DefaultLocatorResolver implements LocatorResolver {
       Instant start,
       int polls,
       List<WebElement> matches,
+      String outcome,
       List<String> suggestions) {
     long elapsed = Duration.between(start, Instant.now()).toMillis();
     String url = safeString(() -> context.unsafe().driver().getCurrentUrl());
@@ -116,7 +121,9 @@ public class DefaultLocatorResolver implements LocatorResolver {
         suggestions,
         Map.of(
             "selectorTier", plan.tier().name(),
-            "matchCount", matches.size()));
+            "matchCount", matches.size(),
+            "outcome", outcome,
+            "locatorId", plan.tags().getOrDefault("locatorId", "")));
   }
 
   private ResolutionDiagnostics withCandidatePreviews(
