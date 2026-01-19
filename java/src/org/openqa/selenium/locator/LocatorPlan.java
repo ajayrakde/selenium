@@ -46,4 +46,8 @@ public record LocatorPlan(
   public LocatorPlan withName(String name) {
     return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
   }
+
+  public LocatorPlan withTags(Map<String, Object> tags) {
+    return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
+  }
 }
