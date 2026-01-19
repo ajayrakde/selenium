@@ -710,8 +710,13 @@ namespace :py do
   desc 'Update Python dependencies'
   task :update do
     Bazel.execute('run', [], '//scripts:update_py_deps')
-    Bazel.execute('run', [], '//py:requirements.update')
     @git.add('py/requirements.txt')
+    Rake::Task['py:pin'].invoke
+  end
+
+  desc 'Pin Python dependencies'
+  task :pin do
+    Bazel.execute('run', [], '//py:requirements.update')
     @git.add('py/requirements_lock.txt')
   end
 
@@ -1227,6 +1232,7 @@ namespace :all do
   desc 'Pin dependencies for all languages'
   task :pin do
     Rake::Task['java:pin'].invoke
+    Rake::Task['py:pin'].invoke
     Rake::Task['rb:pin'].invoke
     Rake::Task['rust:pin'].invoke
     Rake::Task['node:pin'].invoke
