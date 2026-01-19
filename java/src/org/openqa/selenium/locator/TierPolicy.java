@@ -1,9 +1,9 @@
 package org.openqa.selenium.locator;
 
 /**
- * Governance policy for selector tiers.
+ * Enforcement level for selector tiers.
  */
-public enum SelectorTierPolicy {
+public enum TierPolicy {
   LENIENT,
   STANDARD,
   STRICT

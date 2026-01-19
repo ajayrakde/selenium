@@ -10,9 +10,5 @@ public interface LocatorFactory {
 
   Locator byXpath(String xpath);
 
-  Locator byRole(AriaRole role, String name);
-
-  Locator byLabel(String labelText);
-
   Locator root();
 }

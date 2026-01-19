@@ -6,11 +6,15 @@ import java.time.Duration;
  * Configuration policy for locator behavior and governance.
  */
 public interface Policy {
+  String testIdAttribute();
+
   Duration defaultTimeout();
 
   Duration defaultPollInterval();
 
-  String testIdAttribute();
+  TierPolicy tierPolicy();
 
-  SelectorTierPolicy tierPolicy();
+  int maxCandidatesInDiagnostics();
+
+  TextNormalization textNormalization();
 }

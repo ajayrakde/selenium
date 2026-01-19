@@ -1,6 +1,5 @@
 package org.openqa.selenium.locator;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -8,57 +7,43 @@ import java.util.Objects;
 /**
  * Immutable plan describing how to resolve a locator.
  */
-public final class LocatorPlan {
-  private final String name;
-  private final ScopePlan scope;
-  private final List<SelectorStep> steps;
-  private final List<FilterSpec> filters;
-  private final Strictness strictness;
-  private final SelectorTier tier;
-  private final Map<String, Object> tags;
-
-  public LocatorPlan(
-      String name,
-      ScopePlan scope,
-      List<SelectorStep> steps,
-      List<FilterSpec> filters,
-      Strictness strictness,
-      SelectorTier tier,
-      Map<String, Object> tags) {
-    this.name = Objects.requireNonNull(name, "name");
-    this.scope = Objects.requireNonNull(scope, "scope");
-    this.steps = Collections.unmodifiableList(List.copyOf(Objects.requireNonNull(steps, "steps")));
-    this.filters = Collections.unmodifiableList(List.copyOf(Objects.requireNonNull(filters, "filters")));
-    this.strictness = Objects.requireNonNull(strictness, "strictness");
-    this.tier = Objects.requireNonNull(tier, "tier");
-    this.tags = Collections.unmodifiableMap(Map.copyOf(Objects.requireNonNull(tags, "tags")));
+public record LocatorPlan(
+    String name,
+    ScopePlan scope,
+    List<SelectorStep> steps,
+    List<FilterSpec> filters,
+    Strictness strictness,
+    SelectorTier tier,
+    Map<String, Object> tags) {
+  public LocatorPlan {
+    Objects.requireNonNull(name, "name");
+    Objects.requireNonNull(scope, "scope");
+    Objects.requireNonNull(steps, "steps");
+    if (steps.isEmpty()) {
+      throw new IllegalArgumentException("steps must contain at least one selector step");
+    }
+    Objects.requireNonNull(filters, "filters");
+    Objects.requireNonNull(strictness, "strictness");
+    Objects.requireNonNull(tier, "tier");
+    Objects.requireNonNull(tags, "tags");
+    steps = List.copyOf(steps);
+    filters = List.copyOf(filters);
+    tags = Map.copyOf(tags);
   }
 
-  public String name() {
-    return name;
+  public LocatorPlan withStrictness(Strictness strictness) {
+    return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
   }
 
-  public ScopePlan scope() {
-    return scope;
+  public LocatorPlan withScope(ScopePlan scope) {
+    return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
   }
 
-  public List<SelectorStep> steps() {
-    return steps;
+  public LocatorPlan withFilters(List<FilterSpec> filters) {
+    return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
   }
 
-  public List<FilterSpec> filters() {
-    return filters;
-  }
-
-  public Strictness strictness() {
-    return strictness;
-  }
-
-  public SelectorTier tier() {
-    return tier;
-  }
-
-  public Map<String, Object> tags() {
-    return tags;
+  public LocatorPlan withName(String name) {
+    return new LocatorPlan(name, scope, steps, filters, strictness, tier, tags);
   }
 }

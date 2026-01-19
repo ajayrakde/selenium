@@ -3,6 +3,6 @@ package org.openqa.selenium.locator;
 /**
  * Diagnostics sink for locator resolution events.
  */
-public interface Diagnostics {
+public interface DiagnosticsSink {
   void record(ResolutionDiagnostics diagnostics);
 }

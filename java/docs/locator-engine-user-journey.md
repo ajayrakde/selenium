@@ -7,7 +7,7 @@ This document describes the primary user journey for adopting the Locator Engine
 1. **Create a session context**
    - The test obtains an `AutomationContext` from its framework or fixture.
 2. **Create locators through the factory**
-   - Use tiered selectors (`byTestId`, `byRole`, etc.).
+   - Use tiered selectors (`byTestId` is the default, with `data-testid`).
 3. **Compose and scope**
    - Use `within`, `filter`, and `nth` to disambiguate.
 4. **Resolve via actions/queries**
